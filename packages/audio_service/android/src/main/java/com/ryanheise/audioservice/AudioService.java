@@ -730,6 +730,11 @@ public class AudioService extends MediaBrowserServiceCompat {
     }
 
     private Notification buildNotification() {
+        // Without the notification permission (Android 13+) only MediaStyle
+        // notifications are shown, so fall back to the system player.
+        if (!androidx.core.app.NotificationManagerCompat.from(this).areNotificationsEnabled()) {
+            return buildSystemNotification();
+        }
         try {
             return buildMuNotification();
         } catch (Throwable t) {
@@ -816,7 +821,13 @@ public class AudioService extends MediaBrowserServiceCompat {
         NotificationManager notificationManager = getNotificationManager();
         NotificationChannel channel = notificationManager.getNotificationChannel(notificationChannelId);
         if (channel == null) {
-            channel = new NotificationChannel(notificationChannelId, config.androidNotificationChannelName, NotificationManager.IMPORTANCE_LOW);
+            // MU-FLAC: DEFAULT importance so the custom (non-MediaStyle) player
+            // shows on the lock screen; silent and no vibration.
+            channel = new NotificationChannel(notificationChannelId, config.androidNotificationChannelName, NotificationManager.IMPORTANCE_DEFAULT);
+            channel.setSound(null, null);
+            channel.enableVibration(false);
+            channel.enableLights(false);
+            channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             channel.setShowBadge(config.androidShowNotificationBadge);
             if (config.androidNotificationChannelDescription != null)
                 channel.setDescription(config.androidNotificationChannelDescription);

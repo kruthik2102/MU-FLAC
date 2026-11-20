@@ -19,8 +19,8 @@ Future<void> bootstrap() async {
   _booted = true;
   WidgetsFlutterBinding.ensureInitialized();
   await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.kr.mu_flac.channel.audio',
-    androidNotificationChannelName: 'MU-FLAC playback',
+    androidNotificationChannelId: 'com.kr.mu_flac.channel.player',
+    androidNotificationChannelName: 'Now playing',
     androidNotificationOngoing: true,
     androidStopForegroundOnPause: true,
   );

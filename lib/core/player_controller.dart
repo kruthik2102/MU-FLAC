@@ -6,6 +6,7 @@ import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'eq_controller.dart';
 import 'library_store.dart';
@@ -258,9 +259,26 @@ class PlayerController {
   /// Replaces the queue with [tracks] and starts playing at [index].
   /// With [shuffle], play order is shuffled (starting from [index], or a
   /// random track when [index] is null).
+  /// Android 13+: the custom notification needs POST_NOTIFICATIONS.
+  /// Asked once, the first time something is played.
+  Future<void> _askNotificationPermissionOnce() async {
+    if (!Platform.isAndroid || settingsStore.get<bool>(_kAskedNotif) == true) return;
+    await settingsStore.set(_kAskedNotif, true);
+    try {
+      if (await NativeAudio.androidSdkInt() >= 33) {
+        await Permission.notification.request();
+      }
+    } catch (e) {
+      debugPrint('Notification permission request failed: $e');
+    }
+  }
+
+  static const _kAskedNotif = 'askedNotificationPermission';
+
   Future<void> playTracks(List<Track> tracks,
       {int? index, bool shuffle = false, bool autoPlay = true}) {
     if (tracks.isEmpty) return Future.value();
+    unawaited(_askNotificationPermissionOnce());
     return _run(() async {
       final p = player;
       _byUid.clear();
