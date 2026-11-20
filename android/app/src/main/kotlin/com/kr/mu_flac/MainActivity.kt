@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import com.ryanheise.audioservice.AudioService
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -34,6 +35,8 @@ class MainActivity : AudioServiceActivity() {
             .setMethodCallHandler { call, result -> AudioNative.handle(call, result) }
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, "mu_flac/audio_events")
             .setStreamHandler(AudioNative.streamHandler)
+        // Heart button in the custom MU-FLAC notification -> Dart.
+        AudioService.muFavoriteListener = Runnable { AudioNative.emitEvent("favoriteToggle") }
     }
 }
 
@@ -69,6 +72,8 @@ object AudioNative {
             unregisterCallbacks()
         }
     }
+
+    fun emitEvent(event: String) = emit(event)
 
     private fun emit(event: String) {
         mainHandler.post {
@@ -148,6 +153,10 @@ object AudioNative {
                             preamp
                         )
                     )
+                }
+                "setNotificationFavorite" -> {
+                    AudioService.setMuFavorite(call.argument<Boolean>("favorite") ?: false)
+                    result.success(null)
                 }
                 "getVolume" -> result.success(getVolume())
                 "setVolume" -> {

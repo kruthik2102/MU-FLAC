@@ -11,6 +11,7 @@ import 'eq_controller.dart';
 import 'library_store.dart';
 import 'models.dart';
 import 'native_audio.dart';
+import 'playlist_store.dart';
 import 'settings_store.dart';
 
 /// Shuffle order we control, so "Play next" lands right after the current
@@ -170,7 +171,14 @@ class PlayerController {
     _subs.add(p.androidAudioSessionIdStream.listen(eqController.attachSession));
     _subs.add(NativeAudio.events.listen((e) {
       if (e == 'outputChanged') _onOutputChanged();
+      if (e == 'favoriteToggle') {
+        final t = _current.value;
+        if (t != null) playlistStore.toggleFavorite(t.key);
+      }
     }));
+    // Keep the notification's heart in sync with Favorites.
+    _current.addListener(_syncNotificationFavorite);
+    playlistStore.addListener(_syncNotificationFavorite);
     eqController.addListener(_recomputeMatched);
 
     final savedRepeat = settingsStore.get<String>(_kRepeat);
@@ -205,6 +213,15 @@ class PlayerController {
     return c.future;
   }
 
+  bool? _lastNotifFav;
+  void _syncNotificationFavorite() {
+    final t = _current.value;
+    final fav = t != null && playlistStore.isFavorite(t.key);
+    if (fav == _lastNotifFav) return;
+    _lastNotifFav = fav;
+    unawaited(NativeAudio.setNotificationFavorite(fav));
+  }
+
   AudioSource _source(Track t) {
     final uid = '${t.key}#${_uidCounter++}';
     _byUid[uid] = t;
@@ -218,6 +235,10 @@ class PlayerController {
         genre: t.genre,
         duration: t.durationMs > 0 ? t.duration : null,
         artUri: t.artUri,
+        // Shown by the custom Android notification: title / artist / format pill.
+        displayTitle: t.title,
+        displaySubtitle: t.artist,
+        displayDescription: t.formatLabel,
         extras: {'key': t.key, 'format': t.formatLabel},
       ),
     );

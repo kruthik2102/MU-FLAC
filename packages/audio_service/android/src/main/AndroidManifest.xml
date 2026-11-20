@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- MU-FLAC: heart button in the custom notification. -->
+        <receiver
+            android:name="com.ryanheise.audioservice.MuActionReceiver"
+            android:exported="false" />
+    </application>
+</manifest>

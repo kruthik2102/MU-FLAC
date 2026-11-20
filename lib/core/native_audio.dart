@@ -55,6 +55,12 @@ class NativeAudio {
     return OutputInfo.fromMap(m);
   }
 
+  /// Android: heart state shown in the custom MU-FLAC notification.
+  static Future<void> setNotificationFavorite(bool favorite) async {
+    if (!Platform.isAndroid) return;
+    await _call<void>('setNotificationFavorite', {'favorite': favorite});
+  }
+
   /// Android API level (0 on iOS / unknown).
   static Future<int> androidSdkInt() async {
     if (!Platform.isAndroid) return 0;
