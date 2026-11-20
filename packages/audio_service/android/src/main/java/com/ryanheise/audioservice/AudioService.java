@@ -625,8 +625,6 @@ public class AudioService extends MediaBrowserServiceCompat {
     public static final String MU_ACTION_FAVORITE = "com.ryanheise.audioservice.MU_FAVORITE";
     /** Heart state of the current track (set from Dart via MainActivity). */
     public static volatile boolean muFavorite = false;
-    /** Called when the notification's heart is tapped (wired to Dart). */
-    public static volatile Runnable muFavoriteListener;
 
     public static void setMuFavorite(boolean favorite) {
         muFavorite = favorite;
