@@ -19,7 +19,7 @@ if (hasReleaseKeystore) {
 
 android {
     namespace = "com.kr.mu_flac"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37 // permission_handler_android needs >= 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
