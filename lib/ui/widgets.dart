@@ -72,7 +72,9 @@ class _RaisedState extends State<Raised> {
           width: widget.width,
           height: widget.height,
           padding: widget.padding,
-          alignment: Alignment.center,
+          // Only centre when fully sized: a Container with an alignment and no
+          // width expands to fill its parent (stretched pills in lists).
+          alignment: widget.width != null && widget.height != null ? Alignment.center : null,
           decoration: BoxDecoration(
             gradient: _down ? MF.pressedGradient : widget.gradient,
             shape: widget.circle ? BoxShape.circle : BoxShape.rectangle,
@@ -163,7 +165,7 @@ class PillButton extends StatelessWidget {
       onTap: onTap,
       label: label,
       padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
+      child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
         if (icon != null) ...[Icon(icon, size: 20, color: fg), const SizedBox(width: 8)],
         Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: fg)),
       ]),

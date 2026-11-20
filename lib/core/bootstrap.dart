@@ -29,6 +29,7 @@ Future<void> bootstrap() async {
   await playlistStore.load();
   await eqController.init();
   await volumeController.init();
+  libraryStore.onRootsMerged = playlistStore.remapKeyPrefixes;
   await libraryStore.init();
   await playerController.init();
 }

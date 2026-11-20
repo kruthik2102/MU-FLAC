@@ -329,6 +329,8 @@ Future<void> pickMusicFolder() async {
   try {
     final r = await libraryStore.addRoot();
     if (r != null) toast('Added ${r.displayName} - scanning…');
+  } on StateError catch (e) {
+    toast(e.message);
   } catch (e) {
     toast('Could not open that folder: $e');
   }

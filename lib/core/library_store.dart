@@ -161,6 +161,10 @@ class LibraryStore extends ChangeNotifier {
     await _loadRoots();
     await _resolveRoots();
     await _loadCache();
+    if (_droppedOnLoad.isNotEmpty) {
+      _cache.removeWhere((k, t) => _droppedOnLoad.contains(t.root));
+      _droppedOnLoad.clear();
+    }
     if (_isAndroid) {
       _needsPermission = !await _hasMediaPermission();
     }
@@ -189,7 +193,60 @@ class LibraryStore extends ChangeNotifier {
           const LibraryRoot(
               id: kDocsRootId, kind: RootKind.docs, displayName: 'On My iPhone'));
     }
-    _roots = list;
+    // v0.1.0 could save Android folders with a doubled storage prefix
+    // (/storage/emulated/0/storage/emulated/0/Download). Repair them, then
+    // merge folders that ended up nested inside another one.
+    var dirty = false;
+    final fixed = <LibraryRoot>[];
+    for (final r in list) {
+      if (r.kind != RootKind.folder) {
+        fixed.add(r);
+        continue;
+      }
+      final id = _isAndroid ? fixPickerPath(r.id) : r.id;
+      if (id != r.id) dirty = true;
+      if (fixed.any((x) => x.kind == RootKind.folder && x.id == id)) {
+        dirty = true;
+        continue;
+      }
+      fixed.add(id == r.id
+          ? r
+          : LibraryRoot(id: id, kind: RootKind.folder, displayName: p.basename(id), path: id));
+    }
+    final merge = <String, String>{};
+    for (final inner in fixed.where((r) => r.kind == RootKind.folder)) {
+      for (final outer in fixed.where((r) => r.kind == RootKind.folder)) {
+        if (outer.id != inner.id && p.isWithin(outer.id, inner.id)) {
+          merge['${inner.id}|'] = '${outer.id}|${p.posix.relative(inner.id, from: outer.id)}/';
+          _droppedOnLoad.add(inner.id);
+          break;
+        }
+      }
+    }
+    if (merge.isNotEmpty) {
+      fixed.removeWhere((r) => _droppedOnLoad.contains(r.id));
+      dirty = true;
+      await onRootsMerged?.call(merge);
+    }
+    _roots = fixed;
+    if (dirty) await _saveRoots();
+  }
+
+  final Set<String> _droppedOnLoad = {};
+
+  /// Called with `oldRoot|` -> `newRoot|relPrefix/` key prefixes whenever
+  /// folders merge, so playlists can keep pointing at the same files.
+  Future<void> Function(Map<String, String> oldToNewPrefix)? onRootsMerged;
+
+  /// Repairs paths from the Android folder picker. Some devices return the
+  /// storage prefix twice, e.g. `/storage/emulated/0/storage/emulated/0/Download`.
+  static String fixPickerPath(String path) {
+    var s = path.replaceAll('\\', '/');
+    final dup = RegExp(r'^(/storage/emulated/\d+|/storage/[^/]+|/sdcard)(?=/(storage|sdcard)/)');
+    while (dup.hasMatch(s)) {
+      s = s.replaceFirst(dup, '');
+    }
+    return p.posix.normalize(s);
   }
 
   Future<void> _saveRoots() => _rootsFile.write([
@@ -513,7 +570,16 @@ class LibraryStore extends ChangeNotifier {
         debugPrint('Folder picker failed: $e');
       }
       if (path == null || path.isEmpty) return null;
-      return addRootPath(path);
+      final fixedPath = fixPickerPath(path);
+      if (!await Directory(fixedPath).exists()) {
+        throw StateError('MU-FLAC can\'t read "$fixedPath". Try choosing a folder inside it.');
+      }
+      for (final r in _roots) {
+        if (r.kind == RootKind.folder && (r.id == fixedPath || p.isWithin(r.id, fixedPath))) {
+          throw StateError('Already in your library (inside "${r.displayName}").');
+        }
+      }
+      return addRootPath(fixedPath);
     }
     return null;
   }
@@ -534,6 +600,9 @@ class LibraryStore extends ChangeNotifier {
     if (inside.isNotEmpty) {
       _roots.removeWhere((r) => inside.contains(r.id));
       _cache.removeWhere((k, t) => inside.contains(t.root));
+      await onRootsMerged?.call({
+        for (final id in inside) '$id|': '$norm|${p.posix.relative(id, from: norm)}/',
+      });
     }
     final exists = await Directory(norm).exists();
     final root = LibraryRoot(

@@ -2,7 +2,7 @@
 
 import 'package:material_ui/material_ui.dart';
 
-const String kAppVersion = '0.1.1';
+const String kAppVersion = '0.1.2';
 
 abstract final class MF {
   // Surfaces

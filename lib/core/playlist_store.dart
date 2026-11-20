@@ -178,6 +178,34 @@ class PlaylistStore extends ChangeNotifier {
     await _save();
   }
 
+  /// Rewrites track keys when library roots merge: every key starting with
+  /// `oldRoot|` gets that prefix replaced by the mapped new prefix
+  /// (e.g. `/a/Music|x.flac` -> `/a|Music/x.flac`).
+  Future<void> remapKeyPrefixes(Map<String, String> oldToNewPrefix) async {
+    if (oldToNewPrefix.isEmpty) return;
+    var changed = false;
+    for (final pl in List.of(_lists)) {
+      final keys = <String>[];
+      var plChanged = false;
+      for (final k in pl.trackKeys) {
+        var nk = k;
+        for (final e in oldToNewPrefix.entries) {
+          if (k.startsWith(e.key)) {
+            nk = e.value + k.substring(e.key.length);
+            break;
+          }
+        }
+        if (nk != k) plChanged = true;
+        keys.add(nk);
+      }
+      if (plChanged) {
+        _replace(pl.copyWith(trackKeys: keys, updatedAt: _now()));
+        changed = true;
+      }
+    }
+    if (changed) await _save();
+  }
+
   // ---- Favorites ----------------------------------------------------------
 
   bool isFavorite(String trackKey) => _favSet.contains(trackKey);
