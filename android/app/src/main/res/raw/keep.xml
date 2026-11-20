@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release builds shrink unused resources. audio_service looks these icons up
+     by name at runtime (media notification / lock-screen controls), so R8 can't
+     see they are used. Without this the notification fails with
+     "You must specify an icon resource id to build a CustomAction". -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/audio_service_*,@mipmap/ic_launcher" />
